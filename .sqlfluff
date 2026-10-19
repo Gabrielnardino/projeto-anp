@@ -1,0 +1,18 @@
+[sqlfluff]
+dialect = postgres
+templater = dbt
+max_line_length = 100
+# AM04/ST06: "select * from ref()" e ordem lógica de colunas são o padrão em dbt
+# RF04: "data" não é palavra reservada no Postgres
+exclude_rules = AM04, ST06, RF04
+
+[sqlfluff:templater:dbt]
+project_dir = dbt
+profiles_dir = dbt
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower

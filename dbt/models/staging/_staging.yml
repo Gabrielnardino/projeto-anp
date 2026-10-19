@@ -1,0 +1,86 @@
+version: 2
+
+models:
+  - name: stg_anp__precos
+    description: Uma linha por coleta de preço (posto × produto × dia), tipada e deduplicada.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cnpj, produto, data_coleta]
+    columns:
+      - name: cnpj
+        description: CNPJ do posto, só dígitos.
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "~ '^[0-9]{14}$'"
+      - name: produto
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [DIESEL S10, DIESEL S500, GNV]
+      - name: data_coleta
+        data_tests: [not_null]
+      - name: valor_venda
+        description: Preço de bomba em R$ por litro (diesel) ou por m³ (GNV).
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 2
+                max_value: 15
+      - name: uf
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI,
+                         PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO]
+
+  - name: stg_frota__veiculos
+    columns:
+      - name: placa
+        data_tests: [unique, not_null]
+      - name: produto
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [DIESEL S10, DIESEL S500]
+
+  - name: stg_frota__motoristas
+    columns:
+      - name: matricula
+        data_tests: [unique, not_null]
+
+  - name: stg_frota__abastecimentos
+    columns:
+      - name: id_abastecimento
+        data_tests: [unique, not_null]
+      - name: placa
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_frota__veiculos')
+                field: placa
+      - name: matricula
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_frota__motoristas')
+                field: matricula
+      - name: litros
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+
+  - name: stg_frota__gabarito
+    columns:
+      - name: id_abastecimento
+        data_tests:
+          - unique
+          - relationships:
+              arguments:
+                to: ref('stg_frota__abastecimentos')
+                field: id_abastecimento

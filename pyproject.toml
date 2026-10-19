@@ -1,0 +1,33 @@
+[project]
+name = "pipeline"
+version = "0.1.0"
+description = "Pipeline de dados: preços de combustíveis da ANP × abastecimentos de uma frota"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx==0.28.1",
+    "psycopg[binary]==3.3.6",
+]
+
+[dependency-groups]
+dev = [
+    "dbt-core==1.12.6",
+    "dbt-postgres==1.11.0",
+    "pytest==9.1.1",
+    "ruff==0.17.1",
+    "sqlfluff==4.4.0",
+    "sqlfluff-templater-dbt==4.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

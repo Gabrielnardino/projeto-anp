@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  qualidade:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_USER: dados
+          POSTGRES_PASSWORD: dados
+          POSTGRES_DB: dw
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dados -d dw"
+          --health-interval 5s
+          --health-retries 10
+    env:
+      DBT: uv run dbt --project-dir dbt --profiles-dir dbt
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - run: uv sync
+
+      - name: Lint Python
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Testes Python
+        run: uv run pytest
+
+      - name: Carga de amostra (ANP real de set/2026 + um mês de frota)
+        run: uv run python tests/carregar_amostra.py
+      - run: $DBT deps
+      - name: dbt build (modelos + testes de dados)
+        run: $DBT build
+      - name: Lint SQL
+        run: uv run sqlfluff lint dbt
+
+      - name: dbt docs
+        run: |
+          $DBT docs generate --static
+          mkdir -p site && cp dbt/target/static_index.html site/index.html
+      - uses: actions/upload-pages-artifact@v5
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: site
+
+  docs:
+    needs: qualidade
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

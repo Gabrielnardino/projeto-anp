@@ -1,0 +1,65 @@
+x-banco: &banco
+  POSTGRES_USER: ${POSTGRES_USER:-dados}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dados}
+
+services:
+  postgres:
+    image: postgres:17.11-alpine
+    environment:
+      <<: *banco
+      POSTGRES_DB: dw
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d dw"]
+      interval: 5s
+      retries: 10
+
+  airflow:
+    build: docker/airflow
+    # ponytail: standalone (tudo num container) basta para portfólio; separar
+    # scheduler/api-server/dag-processor quando houver carga real
+    command: standalone
+    user: "${AIRFLOW_UID:-1000}:0"
+    environment:
+      <<: *banco
+      MB_ADMIN_EMAIL: ${MB_ADMIN_EMAIL:-admin@anp-frota.local}
+      MB_ADMIN_PASSWORD: ${MB_ADMIN_PASSWORD:-Painel#ANP2026}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-dados}:${POSTGRES_PASSWORD:-dados}@postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"  # ambiente local, sem login
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: America/Sao_Paulo
+      DW_DSN: postgresql://${POSTGRES_USER:-dados}:${POSTGRES_PASSWORD:-dados}@postgres:5432/dw
+      DW_HOST: postgres
+      DW_USER: ${POSTGRES_USER:-dados}
+      DW_PASSWORD: ${POSTGRES_PASSWORD:-dados}
+      DBT_PROFILES_DIR: /opt/projeto/dbt
+      PYTHONPATH: /opt/projeto/src
+    ports: ["8080:8080"]
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/projeto/src
+      - ./dbt:/opt/projeto/dbt
+      - ./metabase:/opt/projeto/metabase
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  metabase:
+    image: metabase/metabase:v0.64.2.8
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: postgres
+      MB_DB_PORT: 5432
+      MB_DB_DBNAME: metabase
+      MB_DB_USER: ${POSTGRES_USER:-dados}
+      MB_DB_PASS: ${POSTGRES_PASSWORD:-dados}
+      MB_LOAD_SAMPLE_CONTENT: "false"
+    ports: ["3000:3000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  pgdata:

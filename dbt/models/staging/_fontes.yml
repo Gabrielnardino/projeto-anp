@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Camada bruta, carregada pelos DAGs do Airflow (src/pipeline).
+    tables:
+      - name: anp_precos
+        description: >
+          Série Histórica de Preços de Combustíveis da ANP (diesel S10, diesel S500 e GNV),
+          arquivos mensais com as coletas semanais por posto. Tudo como texto, igual ao CSV.
+        loaded_at_field: "to_date(data_coleta, 'DD/MM/YYYY')::timestamp"
+        freshness:  # a ANP publica o mês com ~1 mês de atraso
+          warn_after: { count: 45, period: day }
+          error_after: { count: 75, period: day }
+      - name: frota_veiculos
+        description: Cadastro de veículos da transportadora (sintético).
+      - name: frota_motoristas
+        description: Cadastro de motoristas (sintético).
+      - name: frota_abastecimentos
+        description: Abastecimentos da frota em postos reais da pesquisa ANP (sintético).
+        loaded_at_field: data_hora
+        freshness:
+          warn_after: { count: 2, period: day }
+      - name: frota_gabarito
+        description: >
+          Anomalias injetadas pelo gerador. Só existe porque os dados são simulados:
+          serve para medir precisão e recall das regras de auditoria.

@@ -1,0 +1,22 @@
+name: anp_frota
+version: "1.0.0"
+profile: anp_frota
+
+vars:
+  # limites das regras de auditoria (ajustáveis pelo time de negócio)
+  limite_sobrepreco_pct: 0.05       # pago acima do preço ANP do posto
+  limite_consumo_pct_ref: 0.75      # km/l abaixo de 75% da referência do modelo
+  limite_minutos_duplicado: 120     # dois abastecimentos do mesmo veículo em menos de 2 h
+  semanas_validade_preco_anp: 3     # quanto tempo um preço coletado vale como referência
+
+models:
+  anp_frota:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table

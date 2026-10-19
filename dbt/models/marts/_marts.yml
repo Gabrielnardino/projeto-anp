@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: dim_posto
+    description: Postos da pesquisa ANP com os atributos da coleta mais recente.
+    columns:
+      - name: cnpj
+        data_tests: [unique, not_null]
+      - name: bandeiras_no_periodo
+        description: Quantas bandeiras o posto teve na série (mais de 1 = trocou de distribuidora).
+
+  - name: dim_veiculo
+    columns:
+      - name: placa
+        data_tests: [unique, not_null]
+
+  - name: dim_motorista
+    columns:
+      - name: matricula
+        data_tests: [unique, not_null]
+
+  - name: fct_preco_anp_semanal
+    description: Preço médio de cada posto por produto e semana, com a mediana do município.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cnpj, produto, semana]
+    columns:
+      - name: cnpj
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_posto')
+                field: cnpj
+      - name: posto_vs_municipio_pct
+        description: Quanto o posto cobra acima (+) ou abaixo (-) da mediana do município.
+
+  - name: fct_abastecimento
+    description: >
+      Um abastecimento da frota, com o preço que a ANP coletou no mesmo posto, o km/l
+      pelo método do tanque cheio e as regras de auditoria (colunas alerta_*).
+    columns:
+      - name: id_abastecimento
+        data_tests: [unique, not_null]
+      - name: placa
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_veiculo')
+                field: placa
+      - name: matricula
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_motorista')
+                field: matricula
+      - name: cnpj_posto
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_posto')
+                field: cnpj
+      - name: km_por_litro
+        description: km rodados desde o abastecimento anterior ÷ litros deste abastecimento.
+      - name: preco_anp_posto
+        description: >
+          Preço do posto na pesquisa ANP (mesma semana ou a mais recente dentro da validade).
+          Nulo enquanto a ANP não publica o mês.
+      - name: sobrepreco_pct
+        description: Quanto foi pago acima (+) ou abaixo (-) do preço ANP do posto.
+
+  - name: mart_alertas
+    description: Uma linha por alerta de auditoria, com estimativa de prejuízo.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [id_abastecimento, tipo_alerta]
+    columns:
+      - name: tipo_alerta
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [sobrepreco, consumo_anomalo, litros_acima_tanque,
+                         abastecimento_duplicado, odometro_regressivo]
+
+  - name: mart_avaliacao_regras
+    description: Precisão e recall de cada regra de auditoria contra as anomalias simuladas.
+
+  - name: mart_frota_mensal
+    description: Custo e consumo por veículo e mês.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [placa, mes]
