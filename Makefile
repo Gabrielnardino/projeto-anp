@@ -1,6 +1,7 @@
 EXEC = docker compose exec airflow
 DBT_CONTAINER = docker compose exec -w /opt/projeto/dbt airflow /home/airflow/dbt/bin/dbt
-DBT = uv run dbt --project-dir dbt --profiles-dir dbt
+export DBT_PROJECT_DIR = dbt
+export DBT_PROFILES_DIR = dbt
 
 .PHONY: up down carga-inicial paineis test lint docs
 
@@ -29,4 +30,4 @@ lint:
 	uv run sqlfluff lint dbt
 
 docs:
-	$(DBT) docs generate && $(DBT) docs serve --port 8081
+	uv run dbt docs generate && uv run dbt docs serve --port 8081

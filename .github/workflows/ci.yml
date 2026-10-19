@@ -21,7 +21,8 @@ jobs:
           --health-interval 5s
           --health-retries 10
     env:
-      DBT: uv run dbt --project-dir dbt --profiles-dir dbt
+      DBT_PROJECT_DIR: dbt
+      DBT_PROFILES_DIR: dbt
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0  # o setup-uv não publica tag de versão maior
@@ -34,15 +35,15 @@ jobs:
 
       - name: Carga de amostra (ANP real de set/2026 + um mês de frota)
         run: uv run python tests/carregar_amostra.py
-      - run: $DBT deps
+      - run: uv run dbt deps
       - name: dbt build (modelos + testes de dados)
-        run: $DBT build
+        run: uv run dbt build
       - name: Lint SQL
         run: uv run sqlfluff lint dbt
 
       - name: dbt docs
         run: |
-          $DBT docs generate --static
+          uv run dbt docs generate --static
           mkdir -p site && cp dbt/target/static_index.html site/index.html
       - uses: actions/upload-pages-artifact@v5
         if: github.ref == 'refs/heads/main'
