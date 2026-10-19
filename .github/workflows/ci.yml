@@ -24,7 +24,7 @@ jobs:
       DBT: uv run dbt --project-dir dbt --profiles-dir dbt
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.0  # o setup-uv não publica tag de versão maior
       - run: uv sync
 
       - name: Lint Python
